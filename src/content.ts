@@ -44,10 +44,15 @@ const logs: {
   scrollReversals: number;
   scrollIntervals: { time: number, pixels: number }[];
 }[] = [];
+let jsIntervals: number[] = [];
+let logFunc: () => void;
 
 const startLog = () => {
   loggingActive = true;
   console.log("Logging Started");
+  const tracks = trackPage();
+  jsIntervals = tracks?.intervals ?? [];
+  logFunc = tracks?.logFunc ?? (() => {});
 };
 
 const trackPage = () => {
@@ -89,17 +94,16 @@ const trackPage = () => {
     }
   };
 
-  setInterval(() => {
+  const interval5 = setInterval(() => {
     if (!loggingActive) return;
     const scrollY = window.scrollY;
-    const distance = Math.abs(scrollY - lastScrollY);
-    scrollIntervals.push({ time: (currentInterval * 0.5), pixels: distance });
+    scrollIntervals.push({ time: (currentInterval * 0.5), pixels: scrollY });
     currentInterval++;
   }, 500);
 
-  setInterval(trackScrolling, 100);
+  const interval1 = setInterval(trackScrolling, 100);
 
-  window.addEventListener("beforeunload", () => {
+  const logPage = () => {
     if (!loggingActive) return;
     const timeSpent = Math.round((Date.now() - startTime) / 1000);
     logs.push({
@@ -113,16 +117,22 @@ const trackPage = () => {
       scrollReversals: scrollReversals,
       scrollIntervals: scrollIntervals
     });
-  });
+  };
+
+  window.addEventListener("beforeunload", logPage);
+  
+  return {intervals: [interval1, interval5], logFunc: logPage};
 };
 
 const endLog = () => {
+  logFunc();
   loggingActive = false;
+  for (const interval of jsIntervals) {
+    clearInterval(interval);
+  }
   console.log("Logging Data:", logs);
   chrome.storage.local.set({ logs });
 };
-
-trackPage();
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === "rephrase") {
