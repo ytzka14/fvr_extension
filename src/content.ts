@@ -33,31 +33,37 @@ const revertPage = () => {
 };
 
 let loggingActive = false;
-let startTime: number,
-  maxScrollDepth: number,
-  totalScrollAmount: number,
-  upScrollAmount: number,
-  scrollReversals: number,
-  lastScrollY: number,
-  lastScrollTime: number,
-  nonScrollTime: number,
-  scrollIntervals: {time: number, pixels: number}[],
-  currentInterval: number,
-  lastDirection: number;
+const logs: {
+  url: string;
+  title: string;
+  timeSpent: number;
+  maxScrollDepth: number;
+  totalScrollAmount: number;
+  nonScrollTime: number;
+  upScrollAmount: number;
+  scrollReversals: number;
+  scrollIntervals: { time: number, pixels: number }[];
+}[] = [];
 
 const startLog = () => {
   loggingActive = true;
-  startTime = Date.now();
-  maxScrollDepth = 0;
-  totalScrollAmount = 0;
-  upScrollAmount = 0;
-  scrollReversals = 0;
-  lastScrollY = window.scrollY;
-  lastScrollTime = Date.now();
-  nonScrollTime = 0;
-  scrollIntervals = [];
-  currentInterval = 0;
-  lastDirection = 0;
+  console.log("Logging Started");
+};
+
+const trackPage = () => {
+  if (!loggingActive) return;
+
+  const startTime = Date.now();
+  let maxScrollDepth = 0;
+  let totalScrollAmount = 0;
+  let upScrollAmount = 0;
+  let scrollReversals = 0;
+  let lastScrollY = window.scrollY;
+  let lastScrollTime = Date.now();
+  let nonScrollTime = 0;
+  const scrollIntervals: {time: number, pixels: number}[] = [];
+  let currentInterval = 0;
+  let lastDirection = 0;
 
   const trackScrolling = () => {
     if (!loggingActive) return;
@@ -67,7 +73,6 @@ const startLog = () => {
 
     if (delta !== 0) {
       totalScrollAmount += Math.abs(delta);
-
       if (delta > 0) {
         if (lastDirection === -1) scrollReversals++;
         lastDirection = 1;
@@ -76,7 +81,6 @@ const startLog = () => {
         if (lastDirection === 1) scrollReversals++;
         lastDirection = -1;
       }
-
       maxScrollDepth = Math.max(maxScrollDepth, scrollY);
       lastScrollY = scrollY;
       lastScrollTime = now;
@@ -94,25 +98,31 @@ const startLog = () => {
   }, 500);
 
   setInterval(trackScrolling, 100);
+
+  window.addEventListener("beforeunload", () => {
+    if (!loggingActive) return;
+    const timeSpent = Math.round((Date.now() - startTime) / 1000);
+    logs.push({
+      url: document.location.href,
+      title: document.title,
+      timeSpent: timeSpent,
+      maxScrollDepth: maxScrollDepth,
+      totalScrollAmount: totalScrollAmount,
+      nonScrollTime: Math.round(nonScrollTime / 1000),
+      upScrollAmount: upScrollAmount,
+      scrollReversals: scrollReversals,
+      scrollIntervals: scrollIntervals
+    });
+  });
 };
 
 const endLog = () => {
   loggingActive = false;
-  const timeSpent = Math.round((Date.now() - startTime) / 1000);
-  const logData = {
-    url: document.location.href,
-    title: document.title,
-    timeSpent: timeSpent,
-    maxScrollDepth: maxScrollDepth,
-    totalScrollAmount: totalScrollAmount,
-    nonScrollTime: Math.round(nonScrollTime / 1000),
-    upScrollAmount: upScrollAmount,
-    scrollReversals: scrollReversals,
-    scrollIntervals: scrollIntervals
-  };
-  console.log("Logging Data:", logData);
-  chrome.storage.local.set({ logData });
+  console.log("Logging Data:", logs);
+  chrome.storage.local.set({ logs });
 };
+
+trackPage();
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === "rephrase") {
