@@ -42,7 +42,7 @@ const logs: {
   nonScrollTime: number;
   upScrollAmount: number;
   scrollReversals: number;
-  scrollIntervals: { time: number, pixels: number }[];
+  scrollIntervals: { time: number; pixels: number }[];
 }[] = [];
 let jsIntervals: number[] = [];
 let logFunc: () => void;
@@ -66,7 +66,7 @@ const trackPage = () => {
   let lastScrollY = window.scrollY;
   let lastScrollTime = Date.now();
   let nonScrollTime = 0;
-  const scrollIntervals: {time: number, pixels: number}[] = [];
+  const scrollIntervals: { time: number; pixels: number }[] = [];
   let currentInterval = 0;
   let lastDirection = 0;
 
@@ -97,7 +97,7 @@ const trackPage = () => {
   const interval5 = setInterval(() => {
     if (!loggingActive) return;
     const scrollY = window.scrollY;
-    scrollIntervals.push({ time: (currentInterval * 0.5), pixels: scrollY });
+    scrollIntervals.push({ time: currentInterval * 0.5, pixels: scrollY });
     currentInterval++;
   }, 500);
 
@@ -115,13 +115,13 @@ const trackPage = () => {
       nonScrollTime: Math.round(nonScrollTime / 1000),
       upScrollAmount: upScrollAmount,
       scrollReversals: scrollReversals,
-      scrollIntervals: scrollIntervals
+      scrollIntervals: scrollIntervals,
     });
   };
 
   window.addEventListener("beforeunload", logPage);
-  
-  return {intervals: [interval1, interval5], logFunc: logPage};
+
+  return { intervals: [interval1, interval5], logFunc: logPage };
 };
 
 const endLog = () => {
