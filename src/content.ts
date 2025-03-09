@@ -1,8 +1,68 @@
-const rephrase = (text: string) => {
-  return "Test " + text.length;
+// const rephrase = (text: string) => {
+//   return "Test " + text.length;
+// };
+
+const getUserDifficultWords = async () => {
+  return new Promise<string[]>((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { action: "getUserDifficultWords" },
+      (response) => {
+        if (response) {
+          console.log("User Difficult Words", response);
+          resolve(response);
+        } else {
+          console.log("Failed to get user difficult words");
+          reject("Failed to get user difficult words");
+        }
+      }
+    );
+  });
 };
 
-const rephrasePage = () => {
+const removeExistingModal = () => {
+  // Remove any existing modal
+  const existingModal = document.querySelector(".fvr-modal");
+  if (existingModal) {
+    document.body.removeChild(existingModal);
+  }
+};
+
+const clickWords = (e: MouseEvent) => {
+  removeExistingModal();
+
+  const word = (e.target as HTMLElement).innerText;
+  console.log("Clicked", word, e.target);
+
+  const modal = document.createElement("div");
+  modal.classList.add("fvr-modal");
+  const targetRect = (e.target as HTMLElement).getBoundingClientRect();
+  const scrollHeight = window.scrollY;
+  console.log("Target Rect", targetRect);
+  modal.style.left = `${targetRect.right + 10}px`;
+  modal.style.top = `${scrollHeight + targetRect.top - targetRect.height}px`;
+
+  const button1 = document.createElement("button");
+  button1.classList.add("fvr-button");
+  button1.innerText = "Button 1";
+  button1.onclick = () => {
+    console.log("Button 1 clicked");
+    document.body.removeChild(modal);
+  };
+
+  const button2 = document.createElement("button");
+  button2.classList.add("fvr-button");
+  button2.innerText = "Button 2";
+  button2.onclick = () => {
+    console.log("Button 2 clicked");
+    document.body.removeChild(modal);
+  };
+
+  modal.appendChild(button1);
+  modal.appendChild(button2);
+  document.body.appendChild(modal);
+};
+
+const rephrasePage = async () => {
   const articles: HTMLParagraphElement[] = [];
   document.querySelectorAll("p").forEach((element) => {
     if (element.innerText.trim().split(/ +/).length > 5) {
@@ -11,11 +71,48 @@ const rephrasePage = () => {
   });
   console.log("Tags", articles.length);
 
+  // Extract words without duplicates
+  const words = articles.map((element) => element.innerText.split(/ +/));
+  const uniqueWords = [...new Set(words.flat())];
+  console.log("Words", uniqueWords.length, uniqueWords);
+
+  // Calc 5% of uniqueWords
+  const numOfPreservedWords = Math.ceil(uniqueWords.length * 0.05);
+
+  // Extract difficult words according to the user's dictionary
+  const userDiffcultWords = await getUserDifficultWords();
+  const difficultWords = uniqueWords.filter((word) =>
+    userDiffcultWords.includes(word)
+  );
+  const preservedWords =
+    difficultWords.length <= numOfPreservedWords
+      ? difficultWords
+      : difficultWords
+          .sort(() => 0.5 - Math.random())
+          .slice(0, numOfPreservedWords);
+  console.log("Difficult Words", difficultWords.length, difficultWords);
+
   // Rephrase
   articles.forEach((element) => {
-    const rephrasedText = rephrase(element.innerText);
+    // const rephrasedText = rephrase(element.innerText);
+    // TODO: Implement rephrasing
+    const rephrasedHTML = element.innerHTML.replace(
+      /(\b\w+\b)(?![^<]*>)/g,
+      (word) => {
+        if (preservedWords.includes(word)) {
+          return `<span class='fvr-span fvr-difficult'">${word}</span>`;
+        } else {
+          return `<span class='fvr-span'>${word}</span>`;
+        }
+      }
+    );
+
     element.setAttribute("fvr-data-original-content", element.innerHTML);
-    element.innerText = rephrasedText;
+    element.innerHTML = rephrasedHTML;
+  });
+
+  document.querySelectorAll(".fvr-span").forEach((element) => {
+    element.addEventListener("click", clickWords as EventListener);
   });
 };
 
@@ -30,6 +127,8 @@ const revertPage = () => {
       element.innerHTML = originalText;
     }
   });
+
+  removeExistingModal();
 };
 
 let loggingActive = false;
