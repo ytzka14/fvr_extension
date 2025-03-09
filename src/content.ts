@@ -19,6 +19,16 @@ const getUserDifficultWords = async () => {
   });
 };
 
+const addDifficultWord = async (word: string) => {
+  console.info("addDifficultWord", word);
+  chrome.runtime.sendMessage({ action: "addDifficultWord", word });
+};
+
+const removeDifficultWord = async (word: string) => {
+  console.info("removeDifficultWord", word);
+  chrome.runtime.sendMessage({ action: "removeDifficultWord", word });
+};
+
 const removeExistingModal = () => {
   // Remove any existing modal
   const existingModal = document.querySelector(".fvr-modal");
@@ -28,24 +38,38 @@ const removeExistingModal = () => {
 };
 
 const clickWords = (e: MouseEvent) => {
-  removeExistingModal();
 
   const word = (e.target as HTMLElement).innerText;
   console.log("Clicked", word, e.target);
+
+  removeExistingModal();
+  document.querySelectorAll(".fvr-clicked").forEach((element) => {
+    element.classList.remove("fvr-clicked");
+  });
+  (e.target as HTMLElement).classList.add("fvr-clicked");
 
   const modal = document.createElement("div");
   modal.classList.add("fvr-modal");
   const targetRect = (e.target as HTMLElement).getBoundingClientRect();
   const scrollHeight = window.scrollY;
   console.log("Target Rect", targetRect);
-  modal.style.left = `${targetRect.right + 10}px`;
-  modal.style.top = `${scrollHeight + targetRect.top - targetRect.height}px`;
+  const modalWidth = 200; // Adjust this value based on your modal's width
+  const viewportWidth = window.innerWidth;
+  const leftPosition = targetRect.right + 10;
+
+  if (leftPosition + modalWidth > viewportWidth) {
+    modal.style.left = `${viewportWidth - modalWidth - 10}px`;
+  } else {
+    modal.style.left = `${leftPosition}px`;
+  }
+  modal.style.top = `${scrollHeight + targetRect.top - 55}px`;
 
   const button1 = document.createElement("button");
   button1.classList.add("fvr-button");
   button1.innerText = "Button 1";
   button1.onclick = () => {
-    console.log("Button 1 clicked");
+    addDifficultWord(word);
+    (e.target as HTMLElement).classList.add("fvr-difficult");
     document.body.removeChild(modal);
   };
 
@@ -53,7 +77,8 @@ const clickWords = (e: MouseEvent) => {
   button2.classList.add("fvr-button");
   button2.innerText = "Button 2";
   button2.onclick = () => {
-    console.log("Button 2 clicked");
+    removeDifficultWord(word);
+    (e.target as HTMLElement).classList.remove("fvr-difficult");
     document.body.removeChild(modal);
   };
 

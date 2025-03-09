@@ -66,5 +66,13 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
     //   sendResponse(data.difficultWords || []);
     // });
     return true; // Keeps the response channel open for async responses
+  } else if (message.action === "addDifficultWord") {
+    // Store difficult words
+    // chrome.storage.local.set({ difficultWords: message.difficultWords });
+  } else if (message.action === "removeDifficultWord") {
+    // Store difficult words
+    // chrome.storage.local.set({ difficultWords: message.difficultWords });
+  } else {
+    console.log("Unknown message action:", message.action);
   }
 });
