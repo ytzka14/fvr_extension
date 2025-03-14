@@ -31,8 +31,9 @@ const fetchRephrasedSentence = async (
   });
 
   const data = await response.json();
-  console.log("fetchRephrasedSentence - ", data.choices[0].message.content.trim());
-  return data.choices[0].message.content.trim();
+  const result = data.choices[0].message.content.trim();
+  console.log("fetchRephrasedSentence - ", result);
+  return result;
 };
 
 const getUserDifficultWords = async () => {
@@ -70,7 +71,7 @@ const removeExistingModal = () => {
   }
 };
 
-const clickWords = (e: MouseEvent) => {
+const handleWordClick = (e: MouseEvent) => {
   const word = (e.target as HTMLElement).innerText;
   console.info("clickWords", word, e.target);
 
@@ -100,7 +101,11 @@ const clickWords = (e: MouseEvent) => {
   buttonAddWord.innerText = "Add";
   buttonAddWord.onclick = () => {
     addDifficultWord(word.toLowerCase());
-    (e.target as HTMLElement).classList.add("fvr-difficult");
+    document.querySelectorAll(".fvr-span").forEach((element) => {
+      if (element.innerHTML.toLowerCase() === word) {
+        element.classList.add("fvr-difficult");
+      }
+    });
     document.body.removeChild(modal);
   };
 
@@ -109,7 +114,11 @@ const clickWords = (e: MouseEvent) => {
   buttonRemoveWord.innerText = "Remove";
   buttonRemoveWord.onclick = () => {
     removeDifficultWord(word.toLowerCase());
-    (e.target as HTMLElement).classList.remove("fvr-difficult");
+    document.querySelectorAll(".fvr-difficult").forEach((element) => {
+      if (element.innerHTML.toLowerCase() === word) {
+        element.classList.remove("fvr-difficult");
+      }
+    });
     document.body.removeChild(modal);
   };
 
@@ -120,17 +129,27 @@ const clickWords = (e: MouseEvent) => {
 
 const rephrasePage = async () => {
   const articles: HTMLParagraphElement[] = [];
-  document.querySelectorAll("p").forEach((element) => {
-    if (element.innerText.trim().split(/ +/).length > 5) {
-      articles.push(element);
-    }
-  });
-  console.log("Tags", articles.length);
+
+  document
+    .querySelectorAll("[fvr-data-original-content]")
+    .forEach((element) => {
+      articles.push(element as HTMLParagraphElement);
+    });
+
+  if (articles.length === 0) {
+    // Export more than 5 words
+    document.querySelectorAll("p").forEach((element) => {
+      if (element.innerText.trim().split(/ +/).length > 5) {
+        articles.push(element);
+      }
+    });
+  }
+  console.log("rephrasePage", articles.length);
 
   // Extract words without duplicates
   const words = articles.map((element) => element.innerText.split(/ +/));
   const uniqueWords = [...new Set(words.flat())];
-  console.log("Words", uniqueWords.length, uniqueWords);
+  console.log("uniqueWords", uniqueWords.length, uniqueWords);
 
   // Calc 5% of uniqueWords
   const numOfPreservedWords = Math.ceil(uniqueWords.length * 0.05);
@@ -148,7 +167,7 @@ const rephrasePage = async () => {
       : difficultWords
           .sort(() => 0.5 - Math.random())
           .slice(0, numOfPreservedWords);
-  const unpreservedWords = difficultWords.filter(
+  const unpreservedWords = userDiffcultWords.filter(
     (word) => !preservedWords.includes(word)
   );
 
@@ -174,14 +193,14 @@ const rephrasePage = async () => {
     }
     element.innerHTML = rephrasedHTML;
     element.querySelectorAll(".fvr-span").forEach((element) => {
-      element.addEventListener("click", clickWords as EventListener);
+      element.addEventListener("click", handleWordClick as EventListener);
     });
   });
 };
 
 const revertPage = () => {
   const articles = document.querySelectorAll("[fvr-data-original-content]");
-  console.log("Tags", articles.length);
+  console.log("revertPage", articles.length);
 
   // Revert
   articles.forEach((element) => {
